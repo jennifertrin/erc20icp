@@ -1,0 +1,8 @@
+{
+  "plugins": ["prettier-plugin-motoko"],
+  "singleQuote": true,
+  "semi": true,
+  "tabWidth": 2,
+  "bracketSpacing": true,
+  "trailingComma": "all"
+}
