@@ -39,6 +39,7 @@ module {
     public type TokenType = {
       #erc721;
       #erc1155;
+      #erc20;
     };
     public module Id {
       public type Id = {

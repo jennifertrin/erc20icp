@@ -13,7 +13,7 @@ module {
   public type Request = {
     #login;
     #connectEthWallet : (Types.EthWallet, Types.SignedPrincipal);
-    #isNftOwned : Types.Nft.Nft;
+    #isTokenOwned : Types.Nft.Nft;
     #addNfts : [Types.Nft.Nft];
     #setAddressFiltered : (Types.Address.Address, Bool);
   };
