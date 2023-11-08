@@ -34,9 +34,9 @@ shared ({ caller = installer }) actor class Main() {
     await core.connectEthWallet(caller, wallet, signedPrincipal);
   };
 
-  /// Check if an NFT is currently owned by the given principal.
-  public shared ({ caller }) func isNftOwned(principal : Principal, nft : Types.Nft.Nft) : async Bool {
-    await core.isNftOwned(caller, principal, nft);
+  /// Check if an NFT/token is currently owned by the given principal.
+  public shared ({ caller }) func isTokenOwned(principal : Principal, nft : Types.Nft.Nft) : async Bool {
+    await core.isTokenOwned(caller, principal, nft);
   };
 
   /// Verify that the given NFTs are owned by the caller, and store the results.

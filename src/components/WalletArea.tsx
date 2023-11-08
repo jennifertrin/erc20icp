@@ -1,4 +1,4 @@
-import { type Nft } from 'alchemy-sdk';
+import { type Nft, TokenMetadataResponse } from 'alchemy-sdk';
 import { useMetaMask } from 'metamask-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -34,7 +34,11 @@ export default function WalletArea() {
   const user = useIdentity();
   const { status, connect, account, ethereum } = useMetaMask();
   const [nftUrl, setNftUrl] = useSessionStorage('ic-eth.nft-url', '');
-  const [nftResult, setNftResult] = useState<{ nft: Nft } | { err: string }>();
+  const [tokenResult, setTokenResult] = useState<{
+    nft?: Nft;
+    token?: TokenMetadataResponse;
+    err?: string;
+  }>({});
   const [isNftValid, setNftValid] = useState<boolean>();
 
   const address = (ethereum?.selectedAddress as string | undefined) || '';
@@ -67,8 +71,9 @@ export default function WalletArea() {
   };
 
   const parseEtherscanNft = (nftUrl: string) => {
-    const groups =
-      /^https:\/\/(?:(\w+)\.)?etherscan\.io\/nft\/(\w+)\/(\d+)/.exec(nftUrl);
+    const groups = /^https:\/\/(\w+)\.etherscan\.io\/nft\/(\w+)\/(\d+)/.exec(
+      nftUrl,
+    );
     if (!groups) {
       return;
     }
@@ -82,9 +87,7 @@ export default function WalletArea() {
 
   const parseEtherscanToken = (nftUrl: string) => {
     const groups =
-      /^https:\/\/(?:(\w+)\.)?etherscan\.io\/token\/(\w+)\?a=(\d+)/.exec(
-        nftUrl,
-      );
+      /^https:\/\/(\w+)\.etherscan\.io\/token\/(\w+)(?:\/(\d+))?/.exec(nftUrl);
     if (!groups) {
       return;
     }
@@ -92,11 +95,11 @@ export default function WalletArea() {
     return {
       network: network || 'mainnet',
       contract,
-      tokenId: Number(tokenId),
+      tokenId: Number(tokenId || 1),
     };
   };
 
-  const nftInfo = useMemo(
+  const tokenInfo = useMemo(
     () =>
       parseOpenSeaNft(nftUrl) ||
       parseEtherscanNft(nftUrl) ||
@@ -105,21 +108,32 @@ export default function WalletArea() {
   );
 
   const isCollectionUrl =
-    !nftInfo &&
+    !tokenInfo &&
     (/^https:\/\/(testnets\.)?opensea\.io\/assets\/(\w+)\/(\w+)/.test(nftUrl) ||
       /^https:\/\/(?:(\w+)\.)?etherscan\.io\/nft\/(\w+)/.test(nftUrl) ||
       /^https:\/\/(?:(\w+)\.)?etherscan\.io\/token\/(\w+)/.test(nftUrl));
 
-  const verifyNft = useCallback(() => {
+  const verifyToken = useCallback(() => {
     setNftValid(undefined);
-    if (isAddressVerified && nftInfo) {
+    if (isAddressVerified && tokenInfo) {
       handlePromise(
         (async () => {
           try {
             const nft = await getAlchemy(
-              `eth-${nftInfo.network}` as any,
-            ).nft.getNftMetadata(nftInfo.contract, nftInfo.tokenId, {});
-            setNftResult({ nft });
+              `eth-${tokenInfo.network}` as any,
+            ).nft.getNftMetadata(tokenInfo.contract, tokenInfo.tokenId, {});
+            setTokenResult({ nft });
+
+            let token;
+            if (
+              nft.tokenType === 'NO_SUPPORTED_NFT_STANDARD' ||
+              nft.tokenType === 'UNKNOWN'
+            ) {
+              token = await getAlchemy(
+                `eth-${tokenInfo.network}` as any,
+              ).core.getTokenMetadata(tokenInfo.contract);
+              setTokenResult({ token });
+            }
 
             try {
               const tokenType =
@@ -127,16 +141,18 @@ export default function WalletArea() {
                   ? { erc1155: null }
                   : nft.tokenType === 'ERC721'
                   ? { erc721: null }
+                  : token?.name !== null
+                  ? { erc20: null }
                   : undefined;
               if (!tokenType) {
                 throw new Error(`Unknown token type: ${nft.tokenType}`);
               }
               const valid = await getBackend().addNfts([
                 {
-                  contract: nftInfo.contract,
-                  network: nftInfo.network,
-                  tokenType,
-                  tokenId: BigInt(nftInfo.tokenId),
+                  contract: tokenInfo.contract,
+                  network: tokenInfo.network,
+                  tokenType: tokenType,
+                  tokenId: BigInt(tokenInfo.tokenId),
                   owner: address,
                 },
               ]);
@@ -150,14 +166,14 @@ export default function WalletArea() {
             }
           } catch (err) {
             console.warn(err);
-            setNftResult({ err: String(err) });
+            setTokenResult({ err: String(err) });
           }
         })(),
       );
     }
-  }, [address, isAddressVerified, nftInfo]);
+  }, [address, isAddressVerified, tokenInfo]);
 
-  useEffect(() => verifyNft(), [verifyNft]);
+  useEffect(() => verifyToken(), [verifyToken]);
 
   const getMetaMaskButton = () => {
     if (status === 'notConnected') {
@@ -250,14 +266,14 @@ export default function WalletArea() {
             <label>
               <div tw="flex items-center gap-3 text-xl text-gray-600 mb-1">
                 <div>OpenSea or Etherscan URL:</div>
-                {!!nftInfo && (
+                {!!tokenInfo && (
                   <div tw="text-base">
                     {isNftValid === true ? (
                       <FaCheckCircle tw="text-green-500" />
                     ) : isNftValid === false ? (
                       <FaTimesCircle
                         tw="text-red-500 cursor-pointer"
-                        onClick={() => verifyNft()}
+                        onClick={() => verifyToken()}
                       />
                     ) : (
                       <FaCircleNotch tw="opacity-60 animate-spin [animation-duration: 2s]" />
@@ -267,7 +283,7 @@ export default function WalletArea() {
               </div>
               <input
                 css={
-                  nftInfo && [
+                  tokenInfo && [
                     isNftValid === true
                       ? tw`border-green-500`
                       : isNftValid === false
@@ -281,22 +297,23 @@ export default function WalletArea() {
                 onChange={(e) => setNftUrl(e.target.value)}
               />
             </label>
-            {!!nftUrl && !nftInfo && (
+            {!!isCollectionUrl && (
               <div tw="text-red-600 font-bold">
-                {isCollectionUrl
-                  ? 'This is an NFT collection; please enter the URL of an individual NFT'
-                  : 'Please enter a valid token URL'}
+                Please enter a valid token URL
               </div>
             )}
-            {nftInfo && nftResult ? (
+            {tokenInfo && tokenResult ? (
               <>
-                {'nft' in nftResult && (
+                {'nft' in tokenResult && (
                   <div tw="mt-3 max-w-[500px] mx-auto">
-                    <NftView nft={nftResult.nft} />
+                    <TokenView
+                      nft={tokenResult.nft as Nft}
+                      token={tokenResult.token as TokenMetadataResponse}
+                    />
                   </div>
                 )}
-                {'err' in nftResult && (
-                  <div tw="text-red-600 font-bold">{nftResult.err}</div>
+                {'err' in tokenResult && (
+                  <div tw="text-red-600 font-bold">{tokenResult.err}</div>
                 )}
               </>
             ) : (
@@ -323,20 +340,25 @@ export default function WalletArea() {
   );
 }
 
-function NftView({ nft }: { nft: Nft }) {
+function TokenView({ nft, token }: { nft: Nft; token: TokenMetadataResponse }) {
   return (
     <div tw="p-5 sm:p-6 bg-white rounded-xl space-y-3 drop-shadow-2xl">
-      {!!nft.title && (
-        <div tw="text-2xl sm:text-3xl font-bold">{nft.title}</div>
-      )}
-      {!!nft.media.length && (
+      {!!nft?.title ||
+        (!!token?.name && (
+          <div tw="text-2xl sm:text-3xl font-bold">
+            {nft?.title || token?.name}
+          </div>
+        ))}
+      {!!nft.media.length ? (
         <img
           tw="w-full rounded-xl"
           alt="NFT preview"
           src={nft.media[0].gateway}
         />
-      )}
-      {!!nft.description && <div tw="sm:text-xl">{nft.description}</div>}
+      ) : null}
+      {!!nft?.description || !!token?.symbol ? (
+        <div tw="sm:text-xl">{nft?.description || token?.symbol}</div>
+      ) : null}
     </div>
   );
 }

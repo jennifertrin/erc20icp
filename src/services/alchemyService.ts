@@ -1,4 +1,4 @@
-import { Alchemy, Network, Nft } from 'alchemy-sdk';
+import { Alchemy, Network, Nft, TokenMetadataResponse } from 'alchemy-sdk';
 import { AlchemyProvider } from 'ethers';
 import { useCallback } from 'react';
 import useRefresh, { Refresh } from '../hooks/utils/useRefresh';
@@ -34,6 +34,23 @@ export function useNftMetadata(
           return null;
         }),
     [contract, network, tokenId],
+  );
+  return useRefresh(refresh);
+}
+
+export function useTokenMetadata(
+  network: string,
+  contract: string,
+): Refresh<TokenMetadataResponse | null | undefined> {
+  const refresh = useCallback(
+    () =>
+      getAlchemy(`eth-${network}` as any)
+        .core.getTokenMetadata(contract)
+        .catch((err) => {
+          console.error(err);
+          return null;
+        }),
+    [contract, network],
   );
   return useRefresh(refresh);
 }

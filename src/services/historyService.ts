@@ -8,7 +8,7 @@ import makeObservable from '../utils/makeObservable';
 import { getBackend } from './backendService';
 import { USER_STORE } from './userService';
 
-export type TokenType = 'erc721' | 'erc1155';
+export type TokenType = 'erc721' | 'erc1155' | 'erc20';
 
 export interface Nft {
   tokenId: string;

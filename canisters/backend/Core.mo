@@ -47,13 +47,13 @@ module {
       log.okWith(checkOutcome);
     };
 
-    public func isNftOwned(caller : Principal, principal : Principal, nft : Types.Nft.Nft) : async Bool {
-      let log = logger.Begin(caller, #isNftOwned(nft));
-      let isOwned = await isNftOwned_(principal, nft);
+    public func isTokenOwned(caller : Principal, principal : Principal, nft : Types.Nft.Nft) : async Bool {
+      let log = logger.Begin(caller, #isTokenOwned(nft));
+      let isOwned = await isTokenOwned_(principal, nft);
       log.okWith(isOwned);
     };
 
-    func isNftOwned_(principal : Principal, nft : Types.Nft.Nft) : async Bool {
+    func isTokenOwned_(principal : Principal, nft : Types.Nft.Nft) : async Bool {
       switch (state.hasWalletSignsPrincipal(nft.owner, principal)) {
         case (?_) {
           switch (nft.tokenType) {
@@ -63,6 +63,10 @@ module {
             };
             case (#erc1155) {
               let balance = await IcEth.erc1155_balance_of(nft.network, nft.contract, nft.owner, Nat64.fromNat(nft.tokenId));
+              balance > 0;
+            };
+            case (#erc20) {
+              let balance = await IcEth.erc20_balance_of(nft.network, nft.contract, nft.owner);
               balance > 0;
             };
           };
@@ -76,7 +80,7 @@ module {
     public func addNfts(caller : Principal, nfts : [Types.Nft.Nft]) : async Bool {
       let log = logger.Begin(caller, #addNfts(nfts));
       for (nft in nfts.vals()) {
-        let isOwned = await isNftOwned_(caller, nft);
+        let isOwned = await isTokenOwned_(caller, nft);
         log.internal(#verifyOwnerOutcome(nft, isOwned));
         state.ethNfts.put(nft, nft);
         if (not isOwned) {
