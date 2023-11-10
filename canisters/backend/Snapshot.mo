@@ -8,8 +8,8 @@ import Iter "lib/IterMore";
 module {
   type EthWallet = Types.EthWallet;
   type CreateSuccess = Types.CreateSuccess;
-  type Nft = Types.Nft.Nft;
-  type NftId = Types.Nft.Id.Id;
+  type Nft = Types.Token.Token;
+  type NftId = Types.Token.Id.Id;
 
   public type Entry = {
     #principal : (Principal, CreateSuccess);

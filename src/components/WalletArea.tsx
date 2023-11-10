@@ -95,7 +95,7 @@ export default function WalletArea() {
     return {
       network: network || 'mainnet',
       contract,
-      tokenId: Number(tokenId || 1),
+      tokenId: tokenId ? Number(tokenId) : null,
     };
   };
 
@@ -119,15 +119,19 @@ export default function WalletArea() {
       handlePromise(
         (async () => {
           try {
-            const nft = await getAlchemy(
-              `eth-${tokenInfo.network}` as any,
-            ).nft.getNftMetadata(tokenInfo.contract, tokenInfo.tokenId, {});
-            setTokenResult({ nft });
+            let nft;
+
+            if (tokenInfo.tokenId) {
+              nft = await getAlchemy(
+                `eth-${tokenInfo.network}` as any,
+              ).nft.getNftMetadata(tokenInfo.contract, tokenInfo.tokenId, {});
+              setTokenResult({ nft });
+            }
 
             let token;
             if (
-              nft.tokenType === 'NO_SUPPORTED_NFT_STANDARD' ||
-              nft.tokenType === 'UNKNOWN'
+              nft?.tokenType === 'NO_SUPPORTED_NFT_STANDARD' ||
+              nft?.tokenType === 'UNKNOWN'
             ) {
               token = await getAlchemy(
                 `eth-${tokenInfo.network}` as any,
@@ -137,22 +141,22 @@ export default function WalletArea() {
 
             try {
               const tokenType =
-                nft.tokenType === 'ERC1155'
+                nft?.tokenType === 'ERC1155'
                   ? { erc1155: null }
-                  : nft.tokenType === 'ERC721'
+                  : nft?.tokenType === 'ERC721'
                   ? { erc721: null }
                   : token?.name !== null
                   ? { erc20: null }
                   : undefined;
               if (!tokenType) {
-                throw new Error(`Unknown token type: ${nft.tokenType}`);
+                throw new Error(`Unknown token type: ${nft?.tokenType}`);
               }
               const valid = await getBackend().addNfts([
                 {
                   contract: tokenInfo.contract,
                   network: tokenInfo.network,
                   tokenType: tokenType,
-                  tokenId: BigInt(tokenInfo.tokenId),
+                  tokenId: tokenInfo.tokenId ? [BigInt(tokenInfo.tokenId)] : [],
                   owner: address,
                 },
               ]);

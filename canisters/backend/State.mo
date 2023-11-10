@@ -18,9 +18,9 @@ module {
   public type OwnershipCheckSuccess = Types.OwnershipCheckSuccess;
   public type SignedPrincipal = Types.SignedPrincipal;
 
-  public let NftId = Types.Nft.Id;
-  public type NftId = Types.Nft.Id.Id;
-  public type Nft = Types.Nft.Nft;
+  public let NftId = Types.Token.Id;
+  public type NftId = Types.Token.Id.Id;
+  public type Nft = Types.Token.Token;
 
   public module Stable {
 

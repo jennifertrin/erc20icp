@@ -35,17 +35,17 @@ shared ({ caller = installer }) actor class Main() {
   };
 
   /// Check if an NFT/token is currently owned by the given principal.
-  public shared ({ caller }) func isTokenOwned(principal : Principal, nft : Types.Nft.Nft) : async Bool {
+  public shared ({ caller }) func isTokenOwned(principal : Principal, nft : Types.Token.Token) : async Bool {
     await core.isTokenOwned(caller, principal, nft);
   };
 
   /// Verify that the given NFTs are owned by the caller, and store the results.
-  public shared ({ caller }) func addNfts(nfts : [Types.Nft.Nft]) : async Bool {
-    await core.addNfts(caller, nfts);
+  public shared ({ caller }) func addNfts(nfts : [Types.Token.Token]) : async Bool {
+    await core.addTokens(caller, nfts);
   };
 
   /// Retrieve the NFTs which were previously verified via `addNfts()`.
-  public query ({ caller }) func getNfts() : async [Types.Nft.Nft] {
+  public query ({ caller }) func getNfts() : async [Types.Token.Token] {
     core.getNfts(caller);
   };
 

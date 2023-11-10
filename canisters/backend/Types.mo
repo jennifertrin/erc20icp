@@ -28,12 +28,12 @@ module {
     public type SignedPrincipal = Text;
   };
 
-  public module Nft {
-    public type Nft = {
+  public module Token {
+    public type Token = {
       owner : Address.Address;
       contract : Address.Address;
       tokenType : TokenType;
-      tokenId : Nat;
+      tokenId : ?Nat;
       network : Text;
     };
     public type TokenType = {
@@ -44,12 +44,12 @@ module {
     public module Id {
       public type Id = {
         contract : Address.Address;
-        tokenId : Nat;
+        tokenId : ?Nat;
         network : Text;
       };
-      public func fromNft(n : Nft) : Id { n };
+      public func fromNft(n : Token) : Id { n };
       public func hash(n : Id) : Hash.Hash {
-        Text.hash(n.network # "/" # n.contract # "/" # Nat.toText(n.tokenId));
+        Text.hash(n.network # "/" # n.contract # "/" # (switch (n.tokenId) {case(null) {""}; case(?tokenId) {Nat.toText(tokenId)}}));
       };
       public func equal(n1 : Id, n2 : Id) : Bool {
         n1 == n2;
@@ -84,7 +84,7 @@ module {
   public type AddNftEvent = {
     principal : Principal;
     wallet : EthWallet;
-    nft : Nft.Nft;
+    nft : Token.Token;
     time : System.Time;
   };
 

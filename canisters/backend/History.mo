@@ -13,8 +13,8 @@ module {
   public type Request = {
     #login;
     #connectEthWallet : (Types.EthWallet, Types.SignedPrincipal);
-    #isTokenOwned : Types.Nft.Nft;
-    #addNfts : [Types.Nft.Nft];
+    #isTokenOwned : Types.Token.Token;
+    #addNfts : [Types.Token.Token];
     #setAddressFiltered : (Types.Address.Address, Bool);
   };
 
@@ -27,7 +27,7 @@ module {
 
   public type Internal = {
     #verifyEcdsaOutcome : Bool;
-    #verifyOwnerOutcome : (Types.Nft.Nft, Bool);
+    #verifyOwnerOutcome : (Types.Token.Token, Bool);
   };
 
   public type Event = {

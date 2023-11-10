@@ -2,9 +2,9 @@ import Types "Types";
 import State "State";
 import History "History";
 import Snapshot "Snapshot";
-
 import Principal "mo:base/Principal";
 import Nat64 "mo:base/Nat64";
+import Error "mo:base/Error";
 import System "lib/System";
 import Iter "lib/IterMore";
 import IcEth "canister:ic_eth";
@@ -47,23 +47,37 @@ module {
       log.okWith(checkOutcome);
     };
 
-    public func isTokenOwned(caller : Principal, principal : Principal, nft : Types.Nft.Nft) : async Bool {
+    public func isTokenOwned(caller : Principal, principal : Principal, nft : Types.Token.Token) : async Bool {
       let log = logger.Begin(caller, #isTokenOwned(nft));
       let isOwned = await isTokenOwned_(principal, nft);
       log.okWith(isOwned);
     };
 
-    func isTokenOwned_(principal : Principal, nft : Types.Nft.Nft) : async Bool {
+    func isTokenOwned_(principal : Principal, nft : Types.Token.Token) : async Bool {
       switch (state.hasWalletSignsPrincipal(nft.owner, principal)) {
         case (?_) {
           switch (nft.tokenType) {
             case (#erc721) {
-              let owner = await IcEth.erc721_owner_of(nft.network, nft.contract, Nat64.fromNat(nft.tokenId));
-              owner == nft.owner;
+              switch (nft.tokenId) {
+                 case (?tokenId) {
+                   let owner = await IcEth.erc721_owner_of(nft.network, nft.contract, Nat64.fromNat(tokenId));
+                   return owner == nft.owner;
+                 };
+                 case (null) {
+                   throw Error.reject("tokenId is required for erc721");
+                 };
+              };
             };
             case (#erc1155) {
-              let balance = await IcEth.erc1155_balance_of(nft.network, nft.contract, nft.owner, Nat64.fromNat(nft.tokenId));
-              balance > 0;
+              switch (nft.tokenId) {
+                 case (?tokenId) {
+                   let balance = await IcEth.erc1155_balance_of(nft.network, nft.contract, nft.owner, Nat64.fromNat(tokenId));
+                   balance > 0;
+                 };
+                 case (null) {
+                   throw Error.reject("tokenId is required for erc721");
+                 };
+              };
             };
             case (#erc20) {
               let balance = await IcEth.erc20_balance_of(nft.network, nft.contract, nft.owner);
@@ -77,7 +91,7 @@ module {
       };
     };
 
-    public func addNfts(caller : Principal, nfts : [Types.Nft.Nft]) : async Bool {
+    public func addTokens(caller : Principal, nfts : [Types.Token.Token]) : async Bool {
       let log = logger.Begin(caller, #addNfts(nfts));
       for (nft in nfts.vals()) {
         let isOwned = await isTokenOwned_(caller, nft);
@@ -94,10 +108,10 @@ module {
       log.okWith(true);
     };
 
-    public func getNfts(caller : Principal) : [Types.Nft.Nft] {
-      let nfts = Iter.filterMap<Types.PublicEvent, Types.Nft.Nft>(
+    public func getNfts(caller : Principal) : [Types.Token.Token] {
+      let nfts = Iter.filterMap<Types.PublicEvent, Types.Token.Token>(
         state.getPublicHistory(),
-        func(e : Types.PublicEvent) : ?Types.Nft.Nft {
+        func(e : Types.PublicEvent) : ?Types.Token.Token {
           switch (e) {
             case (#addNft(e)) {
               if (e.principal == caller) ?e.nft else null;
